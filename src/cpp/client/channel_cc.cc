@@ -163,6 +163,7 @@ grpc::internal::Call Channel::CreateCall(
 
 void Channel::PerformOpsOnCall(grpc::internal::CallOpSetInterface* ops,
                                grpc::internal::Call* call) {
+	 fprintf(stderr, "pthread 0x%lx, func=Channel::PerformOpsOnCall we have magic ctx %p\n", pthread_self(), grpc_core::ExecCtx::Get());
   ops->FillOps(
       call);  // Make a copy of call. It's fine since Call just has pointers
 }

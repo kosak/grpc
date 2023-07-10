@@ -120,8 +120,19 @@ void CallCombiner::ScheduleClosure(grpc_closure* closure,
 #define DEBUG_FMT_ARGS
 #endif
 
+
+#define KOSAK_STRINGIFY4(x) #x
+#define KOSAK_STRINGIFY3(x) KOSAK_STRINGIFY4(x)
+#define KOSAK_STRINGIFY2(x) KOSAK_STRINGIFY3(x)
+#define KOSAK_STRINGIFY1(x) KOSAK_STRINGIFY2(x)
+#define KOSAK_STRINGIFY(x) KOSAK_STRINGIFY1(x)
+
 void CallCombiner::Start(grpc_closure* closure, grpc_error_handle error,
                          DEBUG_ARGS const char* reason) {
+	fprintf(stderr, "GPR_THREAD_LOCAL looks like this %s\n",
+			KOSAK_STRINGIFY(GPR_THREAD_LOCAL(whatever)));
+
+  fprintf(stderr, "In CallCombiner::Start we have pthread 0x%lx and magic ctx %p\n", pthread_self(), grpc_core::ExecCtx::Get());
   GPR_TIMER_SCOPE("CallCombiner::Start", 0);
   if (GRPC_TRACE_FLAG_ENABLED(grpc_call_combiner_trace)) {
     gpr_log(GPR_INFO,
@@ -132,12 +143,18 @@ void CallCombiner::Start(grpc_closure* closure, grpc_error_handle error,
   }
   size_t prev_size =
       static_cast<size_t>(gpr_atm_full_fetch_add(&size_, (gpr_atm)1));
+  fprintf(stderr, "sad clown 1.1\n");
   if (GRPC_TRACE_FLAG_ENABLED(grpc_call_combiner_trace)) {
     gpr_log(GPR_INFO, "  size: %" PRIdPTR " -> %" PRIdPTR, prev_size,
             prev_size + 1);
   }
+  fprintf(stderr, "sad clown 2.1 is running in thread 0x%lx\n",
+		  pthread_self());
+  fprintf(stderr, "%s\n", KOSAK_STRINGIFY(GRPC_STATS_INC_CALL_COMBINER_LOCKS_SCHEDULED_ITEMS()));
   GRPC_STATS_INC_CALL_COMBINER_LOCKS_SCHEDULED_ITEMS();
+  fprintf(stderr, "sad clown 3.1\n");
   if (prev_size == 0) {
+    fprintf(stderr, "sad clown 4.1\n");
     GRPC_STATS_INC_CALL_COMBINER_LOCKS_INITIATED();
     GPR_TIMER_MARK("call_combiner_initiate", 0);
     if (GRPC_TRACE_FLAG_ENABLED(grpc_call_combiner_trace)) {
@@ -146,6 +163,7 @@ void CallCombiner::Start(grpc_closure* closure, grpc_error_handle error,
     // Queue was empty, so execute this closure immediately.
     ScheduleClosure(closure, error);
   } else {
+    fprintf(stderr, "sad clown 5\n");
     if (GRPC_TRACE_FLAG_ENABLED(grpc_call_combiner_trace)) {
       gpr_log(GPR_INFO, "  QUEUING");
     }

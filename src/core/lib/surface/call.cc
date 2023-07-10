@@ -64,6 +64,23 @@
 #include "src/core/lib/transport/error_utils.h"
 #include "src/core/lib/transport/transport.h"
 
+void stupid2() {
+	char bigbuf[4096];
+	for (int i = 0; i < 4096; ++i) {
+		 bigbuf[i] = (char)i;
+	}
+    fprintf(stderr, "inside stupid2, we have pthread 0x%lx and magic ctx %p\n", pthread_self(), grpc_core::ExecCtx::Get());
+}
+
+void stupid(const char *what) {
+	char bigbuf[4096];
+	for (int i = 0; i < 4096; ++i) {
+		 bigbuf[i] = (char)i;
+	}
+    fprintf(stderr, "inside stupid %s, we have pthread 0x%lx and magic ctx %p\n", what, pthread_self(), grpc_core::ExecCtx::Get());
+    stupid2();
+}
+
 grpc_core::TraceFlag grpc_call_error_trace(false, "call_error");
 grpc_core::TraceFlag grpc_compression_trace(false, "compression");
 
@@ -726,6 +743,7 @@ void FilterStackCall::ExecuteBatch(grpc_transport_stream_op_batch* batch,
   batch->handler_private.extra_arg = this;
   GRPC_CLOSURE_INIT(start_batch_closure, execute_batch_in_call_combiner, batch,
                     grpc_schedule_on_exec_ctx);
+  fprintf(stderr, "In FilterStackCall::ExecuteBatch we have pthread 0x%lx and magic ctx %p\n", pthread_self(), grpc_core::ExecCtx::Get());
   GRPC_CALL_COMBINER_START(call_combiner(), start_batch_closure,
                            GRPC_ERROR_NONE, "executing batch");
 }
@@ -1348,9 +1366,12 @@ void FilterStackCall::BatchControl::FinishBatch(grpc_error_handle error) {
   FinishStep();
 }
 
+
 grpc_call_error FilterStackCall::StartBatch(const grpc_op* ops, size_t nops,
                                             void* notify_tag,
                                             bool is_notify_tag_closure) {
+	stupid("SB");
+  fprintf(stderr, "At the very top of FilterStackCall::StartBatch we have pthread 0x%lx, this=%p, and magic ctx %p\n", pthread_self(), this, grpc_core::ExecCtx::Get());
   GPR_TIMER_SCOPE("call_start_batch", 0);
 
   size_t i;
@@ -1752,6 +1773,7 @@ grpc_call_error FilterStackCall::StartBatch(const grpc_op* ops, size_t nops,
   }
 
   gpr_atm_rel_store(&any_ops_sent_atm_, 1);
+  fprintf(stderr, "In FilterStackCall::StartBatch we have pthread 0x%lx and magic ctx %p\n", pthread_self(), grpc_core::ExecCtx::Get());
   ExecuteBatch(stream_op, &bctl->start_batch_);
 
 done:
@@ -1879,6 +1901,7 @@ grpc_call_stack* grpc_call_get_call_stack(grpc_call* call) {
   return grpc_core::Call::FromC(call)->call_stack();
 }
 
+
 grpc_call_error grpc_call_start_batch(grpc_call* call, const grpc_op* ops,
                                       size_t nops, void* tag, void* reserved) {
   GRPC_API_TRACE(
@@ -1890,8 +1913,14 @@ grpc_call_error grpc_call_start_batch(grpc_call* call, const grpc_op* ops,
     return GRPC_CALL_ERROR;
   } else {
     grpc_core::ApplicationCallbackExecCtx callback_exec_ctx;
+    fprintf(stderr, "thread 0x%lx Hi... grpc_call_start_batch I am definitely about to make an exec_ctx here\n", pthread_self());
     grpc_core::ExecCtx exec_ctx;
-    return grpc_core::Call::FromC(call)->StartBatch(ops, nops, tag, false);
+    fprintf(stderr, "Just double checking I can read the thing i just made... we have pthread 0x%lx and magic ctx %p\n", pthread_self(), grpc_core::ExecCtx::Get());
+    auto *ptr = grpc_core::Call::FromC(call);
+    fprintf(stderr, "call is %p and ptr is %p\n", call, ptr);
+    fprintf(stderr, "Just triple checking I can read the thing i just made... we have pthread 0x%lx and magic ctx %p\n", pthread_self(), grpc_core::ExecCtx::Get());
+    stupid("grpc-call-start-batch");
+    return ptr->StartBatch(ops, nops, tag, false);
   }
 }
 

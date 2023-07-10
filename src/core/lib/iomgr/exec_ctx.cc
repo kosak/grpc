@@ -1,3 +1,4 @@
+int zamboniCount = 0;
 /*
  *
  * Copyright 2015 gRPC authors.
@@ -26,6 +27,10 @@
 #include "src/core/lib/iomgr/combiner.h"
 #include "src/core/lib/iomgr/error.h"
 #include "src/core/lib/profiling/timers.h"
+
+void break_here() {
+	fprintf(stderr, "hi, set a breakpoint here\n");
+}
 
 static void exec_ctx_run(grpc_closure* closure) {
 #ifndef NDEBUG

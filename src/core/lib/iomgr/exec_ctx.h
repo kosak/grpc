@@ -1,3 +1,5 @@
+	extern int zamboniCount;
+	void break_here();
 /*
  *
  * Copyright 2015 gRPC authors.
@@ -101,6 +103,16 @@ class ExecCtx {
   ExecCtx() : flags_(GRPC_EXEC_CTX_FLAG_IS_FINISHED) {
     Fork::IncExecCtxCount();
     Set(this);
+    ++zamboniCount;
+    fprintf(stderr, "After constructor (%d), thread=0x%lx, this=%p, exec_ctx_=%p, last_exec_ctx_=%p\n", zamboniCount, pthread_self(), this, exec_ctx_, last_exec_ctx_);
+    if (zamboniCount == 5) {
+	    fprintf(stderr, "just breaking here to see how bad the stack depth is\n");
+	    break_here();
+    }
+    if (zamboniCount == 2302) {
+	    fprintf(stderr, "this is where the badness happens\n");
+	    break_here();
+    }
   }
 
   /** Parameterised Constructor */
@@ -109,12 +121,14 @@ class ExecCtx {
       Fork::IncExecCtxCount();
     }
     Set(this);
+    fprintf(stderr, "After other constructor, thread=0x%lx, this=%p, exec_ctx_=%p, last_exec_ctx_=%p\n", pthread_self(), this, exec_ctx_, last_exec_ctx_);
   }
 
   /** Destructor */
   virtual ~ExecCtx() {
     flags_ |= GRPC_EXEC_CTX_FLAG_IS_FINISHED;
     Flush();
+    fprintf(stderr, "At destruction time, just before set, thread=0x%lx, this=%p, exec_ctx_=%p, last_exec_ctx_=%p\n", pthread_self(), this, exec_ctx_, last_exec_ctx_);
     Set(last_exec_ctx_);
     if (!(GRPC_EXEC_CTX_FLAG_IS_INTERNAL_THREAD & flags_)) {
       Fork::DecExecCtxCount();
@@ -202,9 +216,17 @@ class ExecCtx {
   }
 
   /** Gets pointer to current exec_ctx. */
-  static ExecCtx* Get() { return exec_ctx_; }
+  static ExecCtx* Get() {
+	  fprintf(stderr, "hi thread 0x%lx about to get exec_ctx of %p\n",
+			  pthread_self(), exec_ctx_);
+	  return exec_ctx_;
+  }
 
-  static void Set(ExecCtx* exec_ctx) { exec_ctx_ = exec_ctx; }
+  static void Set(ExecCtx* exec_ctx) {
+	  fprintf(stderr, "hi thread 0x%lx setting exec_ctx to %p\n",
+			  pthread_self(), exec_ctx);
+	  exec_ctx_ = exec_ctx;
+  }
 
   static void Run(const DebugLocation& location, grpc_closure* closure,
                   grpc_error_handle error);
