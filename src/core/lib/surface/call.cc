@@ -64,12 +64,16 @@
 #include "src/core/lib/transport/error_utils.h"
 #include "src/core/lib/transport/transport.h"
 
+thread_local int stupid_value;
+
 void stupid2() {
 	char bigbuf[4096];
 	for (int i = 0; i < 4096; ++i) {
 		 bigbuf[i] = (char)i;
 	}
-    fprintf(stderr, "inside stupid2, we have pthread 0x%lx and magic ctx %p\n", pthread_self(), grpc_core::ExecCtx::Get());
+	++stupid_value;
+    fprintf(stderr, "inside stupid2, we have pthread 0x%lx and magic ctx %p and our own thread local is %d\n", pthread_self(), grpc_core::ExecCtx::Get(),
+		    stupid_value);
 }
 
 void stupid(const char *what) {
@@ -1920,7 +1924,8 @@ grpc_call_error grpc_call_start_batch(grpc_call* call, const grpc_op* ops,
     fprintf(stderr, "call is %p and ptr is %p\n", call, ptr);
     fprintf(stderr, "Just triple checking I can read the thing i just made... we have pthread 0x%lx and magic ctx %p\n", pthread_self(), grpc_core::ExecCtx::Get());
     stupid("grpc-call-start-batch");
-    return ptr->StartBatch(ops, nops, tag, false);
+    fprintf(stderr, "superhack -- not using FromC\n");
+    return call->StartBatch(ops, nops, tag, false);
   }
 }
 
