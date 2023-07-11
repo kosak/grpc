@@ -65,6 +65,7 @@
 #include "src/core/lib/transport/transport.h"
 
 thread_local int stupid_value;
+int global_stupid_value = 5000;
 
 void stupid2() {
 	char bigbuf[4096];
@@ -72,8 +73,11 @@ void stupid2() {
 		 bigbuf[i] = (char)i;
 	}
 	++stupid_value;
-    fprintf(stderr, "inside stupid2, we have pthread 0x%lx and magic ctx %p and our own thread local is %d\n", pthread_self(), grpc_core::ExecCtx::Get(),
-		    stupid_value);
+	++global_stupid_value;
+    fprintf(stderr, "This is crazy but the address of the stupid2 fn is %p\n",
+		    &stupid2);
+    fprintf(stderr, "inside stupid2, we have pthread 0x%lx and magic ctx %p and our own thread local is %d and global is %d\n", pthread_self(), grpc_core::ExecCtx::Get(),
+		    stupid_value, global_stupid_value);
 }
 
 void stupid(const char *what) {
@@ -1924,8 +1928,7 @@ grpc_call_error grpc_call_start_batch(grpc_call* call, const grpc_op* ops,
     fprintf(stderr, "call is %p and ptr is %p\n", call, ptr);
     fprintf(stderr, "Just triple checking I can read the thing i just made... we have pthread 0x%lx and magic ctx %p\n", pthread_self(), grpc_core::ExecCtx::Get());
     stupid("grpc-call-start-batch");
-    fprintf(stderr, "superhack -- not using FromC\n");
-    return call->StartBatch(ops, nops, tag, false);
+    return ptr->StartBatch(ops, nops, tag, false);
   }
 }
 
